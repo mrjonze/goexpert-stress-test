@@ -1,6 +1,7 @@
 package main
 
 import (
+	"flag"
 	"fmt"
 	"net/http"
 	"sync"
@@ -8,33 +9,39 @@ import (
 )
 
 func main() {
-	var total = 17
-	var concurrent = 10
-	var failedRequests = 0
-	var rounds = total / concurrent
-	var lastRound = total % concurrent
-	var mapOfResponses = make(map[int]int)
+	url := flag.String("url", "", "endereço a ser testado")
+	total := flag.Int("requests", 0, "quantidade total de requisições")
+	concurrent := flag.Int("concurrency", 0, "quantidade de requisições concorrentes")
 
-	if total == 0 || concurrent == 0 {
-		panic("Total and Concurrent must be greater than 0")
+	flag.Parse()
+
+	if *url == "" {
+		panic("-url não pode ser vazia")
+	}
+	if *total == 0 || *concurrent == 0 {
+		panic("-requests e -concurrency devem ser maiores que 0")
+
 	}
 
-	var url = "http://google.com"
+	var failedRequests = 0
+	var rounds = *total / *concurrent
+	var lastRound = *total % *concurrent
+	var mapOfResponses = make(map[int]int)
 
 	wg := sync.WaitGroup{}
-	wg.Add(total)
+	wg.Add(*total)
 
 	start := time.Now()
 
 	for r := 0; r < rounds; r++ {
-		for i := 0; i < concurrent; i++ {
-			go doRequest(url, &failedRequests, &mapOfResponses, &wg)
+		for i := 0; i < *concurrent; i++ {
+			go doRequest(*url, &failedRequests, &mapOfResponses, &wg)
 		}
 	}
 
 	if lastRound > 0 {
 		for i := 0; i < lastRound; i++ {
-			go doRequest(url, &failedRequests, &mapOfResponses, &wg)
+			go doRequest(*url, &failedRequests, &mapOfResponses, &wg)
 		}
 	}
 
@@ -42,15 +49,15 @@ func main() {
 
 	executionTime := time.Since(start)
 
-	fmt.Printf("%d successful requests from a total of %d attempts.\n", total-failedRequests, total)
-	fmt.Printf("Execution time: %s\n", executionTime)
+	fmt.Printf("%d requisições executadas com sucesso de um total de %d tentativas.\n", *total-failedRequests, *total)
+	fmt.Printf("Tempo de execução: %s\n", executionTime)
 
-	if failedRequests == total {
-		fmt.Println("All requests failed.")
+	if failedRequests == *total {
+		fmt.Println("Todas as requisições falharam.")
 	} else {
-		fmt.Println("\n\nDetailed report below:")
+		fmt.Println("\n\nRelatório detalhado de status code por número de requisições:")
 		for key, value := range mapOfResponses {
-			fmt.Printf("HTTP Code: %d, Amount: %d\n", key, value)
+			fmt.Printf("Código HTTP: %d, Quantidade: %d\n", key, value)
 		}
 	}
 }
