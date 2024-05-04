@@ -28,15 +28,14 @@ func main() {
 
 	for r := 0; r < rounds; r++ {
 		for i := 0; i < concurrent; i++ {
-			go test(i, url, &failedRequests, &mapOfResponses, &wg)
+			go doRequest(url, &failedRequests, &mapOfResponses, &wg)
 		}
 	}
 
 	if lastRound > 0 {
 		for i := 0; i < lastRound; i++ {
-			go test(i, url, &failedRequests, &mapOfResponses, &wg)
+			go doRequest(url, &failedRequests, &mapOfResponses, &wg)
 		}
-
 	}
 
 	wg.Wait()
@@ -46,19 +45,22 @@ func main() {
 	fmt.Printf("%d successful requests from a total of %d attempts.\n", total-failedRequests, total)
 	fmt.Printf("Execution time: %s\n", executionTime)
 
-	fmt.Println("Detailed report below:")
-	for key, value := range mapOfResponses {
-		fmt.Printf("HTTP Code: %d, Amount: %d\n", key, value)
+	if failedRequests == total {
+		fmt.Println("All requests failed.")
+	} else {
+		fmt.Println("\n\nDetailed report below:")
+		for key, value := range mapOfResponses {
+			fmt.Printf("HTTP Code: %d, Amount: %d\n", key, value)
+		}
 	}
-
 }
 
-func test(i int, url string, failedRequests *int, responses *map[int]int, wg *sync.WaitGroup) {
+func doRequest(url string, failedRequests *int, responses *map[int]int, wg *sync.WaitGroup) {
 	req, err := http.Get(url)
 
 	defer wg.Done()
 
-	if err != nil || i == 5 {
+	if err != nil {
 		*failedRequests++
 		return
 	}
@@ -71,8 +73,6 @@ func test(i int, url string, failedRequests *int, responses *map[int]int, wg *sy
 	} else {
 		(*responses)[code] = 1
 	}
-
-	fmt.Printf("Request %d -> Response %d\n", i, code)
 
 	defer req.Body.Close()
 }
