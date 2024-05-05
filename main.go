@@ -8,6 +8,8 @@ import (
 	"time"
 )
 
+var lock sync.Mutex
+
 func main() {
 	url := flag.String("url", "", "endereço a ser testado")
 	total := flag.Int("requests", 0, "quantidade total de requisições")
@@ -63,6 +65,9 @@ func main() {
 }
 
 func doRequest(url string, failedRequests *int, responses *map[int]int, wg *sync.WaitGroup) {
+	lock.Lock()
+	defer lock.Unlock()
+
 	req, err := http.Get(url)
 
 	defer wg.Done()
