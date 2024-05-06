@@ -20,9 +20,13 @@ func main() {
 	if *url == "" {
 		panic("-url não pode ser vazia")
 	}
-	if *total == 0 || *concurrent == 0 {
+	if *total <= 0 || *concurrent <= 0 {
 		panic("-requests e -concurrency devem ser maiores que 0")
 
+	}
+
+	if *total < *concurrent {
+		panic("-requests deve ser maior ou igual a -concurrency")
 	}
 
 	var failedRequests = 0
@@ -67,17 +71,21 @@ func main() {
 func doRequest(url string, failedRequests *int, responses *map[int]int, wg *sync.WaitGroup) {
 	lock.Lock()
 	defer lock.Unlock()
-
+	println("Iniciou um request...")
+	start := time.Now()
 	req, err := http.Get(url)
 
 	defer wg.Done()
 
 	if err != nil {
+		fmt.Printf("Request falhou com erro %v\n", err)
 		*failedRequests++
 		return
 	}
 
 	code := req.StatusCode
+
+	println("Request finalizado com status code ", code)
 
 	value, ok := (*responses)[code]
 	if ok {
@@ -85,6 +93,8 @@ func doRequest(url string, failedRequests *int, responses *map[int]int, wg *sync
 	} else {
 		(*responses)[code] = 1
 	}
+
+	println("Request finalizado em ", time.Since(start))
 
 	defer req.Body.Close()
 }
