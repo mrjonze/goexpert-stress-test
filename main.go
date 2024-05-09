@@ -1,6 +1,7 @@
 package main
 
 import (
+	"crypto/tls"
 	"flag"
 	"fmt"
 	"net/http"
@@ -9,6 +10,12 @@ import (
 )
 
 var lock sync.Mutex
+
+var client = &http.Client{
+	Transport: &http.Transport{
+		TLSClientConfig: &tls.Config{InsecureSkipVerify: true},
+	},
+}
 
 func main() {
 	url := flag.String("url", "", "endereço a ser testado")
@@ -73,7 +80,8 @@ func doRequest(url string, failedRequests *int, responses *map[int]int, wg *sync
 	defer lock.Unlock()
 	println("Iniciou um request...")
 	start := time.Now()
-	req, err := http.Get(url)
+
+	req, err := client.Get(url)
 
 	defer wg.Done()
 
@@ -81,6 +89,8 @@ func doRequest(url string, failedRequests *int, responses *map[int]int, wg *sync
 		fmt.Printf("Request falhou com erro %v\n", err)
 		*failedRequests++
 		return
+	} else {
+		req.Close = true
 	}
 
 	code := req.StatusCode
@@ -94,7 +104,7 @@ func doRequest(url string, failedRequests *int, responses *map[int]int, wg *sync
 		(*responses)[code] = 1
 	}
 
-	println("Request finalizado em ", time.Since(start))
+	fmt.Printf("Request finalizado em %s\n", time.Since(start))
 
 	defer req.Body.Close()
 }
